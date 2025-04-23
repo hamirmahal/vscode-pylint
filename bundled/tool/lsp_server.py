@@ -476,6 +476,49 @@ def _create_workspace_edits(
 # **********************************************************
 # Code Action features end here
 # **********************************************************
+@QUICK_FIXES.quick_fix(codes=["W1514:unspecified-encoding"])
+def fix_unspecified_encoding(
+    document: workspace.Document, diagnostics: List[lsp.Diagnostic]
+) -> List[lsp.CodeAction]:
+    """
+    Provides quick fixes for
+    `Using open without explicitly specifying an encoding - Pylint(W1514:unspecified-encoding)`
+    """
+    code_actions = []
+    for diagnostic in diagnostics:
+        # Get the line where the diagnostic is located
+        line = document.lines[diagnostic.range.start.line]
+
+        # Find the open() call and add encoding parameter
+        if "open(" in line:
+            # Create a text edit to add the encoding parameter
+            edit = lsp.TextEdit(
+                range=lsp.Range(
+                    start=lsp.Position(
+                        line=diagnostic.range.start.line,
+                        character=line.rfind(")"),
+                    ),
+                    end=lsp.Position(
+                        line=diagnostic.range.start.line,
+                        character=line.rfind(")"),
+                    ),
+                ),
+                new_text=", encoding='utf-8')",
+            )
+
+            # Create a workspace edit
+            workspace_edit = lsp.WorkspaceEdit(changes={document.uri: [edit]})
+
+            # Create the code action
+            lsp_code_action = lsp.CodeAction(
+                title=f"{TOOL_DISPLAY}: Add encoding='utf-8' to open() call",
+                kind=lsp.CodeActionKind.QuickFix,
+                diagnostics=[diagnostic],
+                edit=workspace_edit,
+            )
+            code_actions.append(lsp_code_action)
+
+    return code_actions
 
 
 # **********************************************************
